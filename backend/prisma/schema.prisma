@@ -1,0 +1,102 @@
+// This file defines your database structure.
+// Run `npx prisma migrate dev --name init` after setting DATABASE_URL to create these tables for real.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A person who can log in
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // stored as a bcrypt hash, never plain text
+  name      String
+  createdAt DateTime @default(now())
+
+  ownedBoards   Board[]       @relation("BoardOwner")
+  boardMembers  BoardMember[]
+  assignedCards Card[]        @relation("CardAssignee")
+}
+
+// A board, e.g. "My Website Project"
+model Board {
+  id        String   @id @default(uuid())
+  title     String
+  createdAt DateTime @default(now())
+
+  owner     User          @relation("BoardOwner", fields: [ownerId], references: [id])
+  ownerId   String
+
+  lists     List[]
+  members   BoardMember[]
+  labels    Label[]
+}
+
+// Join table: which users belong to which boards (so you can invite collaborators later)
+model BoardMember {
+  id      String @id @default(uuid())
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  role    String @default("member") // "owner" | "member"
+
+  @@unique([boardId, userId]) // a user can only be added to a board once
+}
+
+// A column inside a board, e.g. "To Do", "In Progress", "Done"
+model List {
+  id        String @id @default(uuid())
+  title     String
+  position  Int    // controls left-to-right order of columns
+
+  board     Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId   String
+
+  cards     Card[]
+}
+
+// A single task/sticky note inside a list
+model Card {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  position    Int       // controls top-to-bottom order within a list
+  createdAt   DateTime  @default(now())
+
+  list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId      String
+
+  assignee    User?     @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId  String?
+
+  labels      CardLabel[]
+}
+
+// A tag/category scoped to one board, e.g. "Bug", "Urgent"
+model Label {
+  id      String @id @default(uuid())
+  name    String
+  color   String // hex code, e.g. "#f59e0b"
+
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String
+
+  cards   CardLabel[]
+}
+
+// Join table: which labels are attached to which cards (many-to-many)
+model CardLabel {
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardId  String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  labelId String
+
+  @@id([cardId, labelId])
+}
