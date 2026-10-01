@@ -11,7 +11,7 @@ import { initSocket } from "./socket";
 dotenv.config();
 
 export const app = express();
-app.use(cors());
+app.use(cors({ origin: (process.env.CLIENT_URL || "http://localhost:5173").split(",") }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
