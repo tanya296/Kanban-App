@@ -4,7 +4,7 @@ import axios from "axios";
 // Instead of typing the full backend URL every time,
 // we set it once here as "baseURL".
 export const api = axios.create({
-  baseURL: "http://localhost:4000/api",
+  baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api`,
 });
 
 // This runs before EVERY request made using `api`.
